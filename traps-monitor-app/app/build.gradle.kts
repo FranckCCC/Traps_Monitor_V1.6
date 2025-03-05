@@ -4,9 +4,9 @@ plugins {
 }
 
 val versionMajor = 1
-val versionMinor = 5
-val versionPatch = 3
-val versionBuild = 31
+val versionMinor = 6
+val versionPatch = 0
+val versionBuild = 32
 
 val bundleId = "fr.kewan.trapsmonitor"
 

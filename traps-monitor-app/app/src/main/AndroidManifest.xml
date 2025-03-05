@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Permissions générales -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- POST_NOTIFICATIONS est utilisé sur Android 13+ mais n'affecte pas les versions antérieures -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -14,9 +17,6 @@
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
 
-
-
-
     <application
         android:allowBackup="true"
         android:dataExtractionRules="@xml/data_extraction_rules"
@@ -28,23 +28,26 @@
         android:theme="@style/Theme.TestTraps"
         tools:targetApi="31">
 
-
+        <!-- Service MQTT de Paho -->
         <service android:name="org.eclipse.paho.android.service.MqttService" />
+
+        <!-- Service de fond qui gère la connexion MQTT -->
         <service
             android:name=".BackgroundService"
             android:enabled="true"
             android:exported="false" />
 
+        <!-- Activité de configuration accessible manuellement -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
 
+        <!-- FileProvider pour la gestion des fichiers -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
@@ -54,11 +57,16 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/provider_paths"/>
         </provider>
-        <receiver android:name=".BootReceiver" android:enabled="true" android:exported="false">
+
+        <!-- Receiver pour le démarrage automatique -->
+        <!-- L'attribut android:exported="true" est nécessaire pour Android 12, cela n'affecte pas Android 4.4 -->
+        <receiver
+            android:name=".BootReceiver"
+            android:enabled="true"
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
     </application>
-
 </manifest>

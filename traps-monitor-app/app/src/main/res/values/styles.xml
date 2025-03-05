@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="RectangularButton" parent="Widget.AppCompat.Button">
+        <item name="android:background">@drawable/rectangular_button_bg</item>
+    </style>
+    <style name="Widget.App.Button" parent="Widget.MaterialComponents.Button">
+        <item name="backgroundTint">@color/primaryColor</item>
+        <item name="cornerRadius">4dp</item>
+        <item name="android:textColor">@color/white</item>
+        <!-- other styling items like padding, text size, etc. -->
+    </style>
+    <style name="Widget.App.Button.SmallText" parent="Widget.App.Button">
+        <item name="cornerRadius">0dp</item>
+        <item name="android:textSize">8sp</item> <!-- Adjust the size as needed -->
+    </style>
+    <style name="Widget.App.Button.Test" parent="Widget.App.Button">
+        <!-- Adjust padding as needed, or set a specific width -->
+        <item name="android:paddingLeft">8dp</item>
+        <item name="android:paddingRight">8dp</item>
+        <item name="android:textSize">9sp</item> <!-- Adjust the size as needed -->
+        <item name="cornerRadius">0dp</item>
+        <item name="backgroundTint">@color/black</item>
+
+    </style>
+    <style name="Widget.App.Button.Connect" parent="Widget.App.Button">
+        <!-- Adjust padding as needed, or set a specific width -->
+        <item name="android:paddingLeft">8dp</item>
+        <item name="android:paddingRight">8dp</item>
+        <item name="android:textSize">9sp</item> <!-- Adjust the size as needed -->
+        <item name="cornerRadius">0dp</item>
+        <item name="backgroundTint">@color/green</item>
+
+    </style>
+    <style name="Widget.App.Button.Deconnect" parent="Widget.App.Button">
+        <!-- Adjust padding as needed, or set a specific width -->
+        <item name="android:paddingLeft">8dp</item>
+        <item name="android:paddingRight">8dp</item>
+        <item name="android:textSize">9sp</item> <!-- Adjust the size as needed -->
+        <item name="cornerRadius">0dp</item>
+        <item name="backgroundTint">@color/red</item>
+
+    </style>
+
+</resources>

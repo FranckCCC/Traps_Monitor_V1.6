@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Traps Monitor</string>
+    <string name="first_page_title">Configuration TRAPS Moniteur V1.5.4</string>
+    <string name="server_host_label">Adresse du broker MQTT</string>
+    <string name="server_host_hint">ex: tcp://mqtt.example.com</string>
+    <string name="server_port_label">Port</string>
+    <string name="server_port_hint">ex: 1883</string>
+    <string name="device_name_label">Nom du TRAPS</string>
+    <string name="device_name_hint">Nom du périphérique</string>
+    <string name="toogle_notif_sound_text">Activer le son des notifications</string>
+    <string name="toogle_send_stats_text">Activer l\'envoi des statistiques</string>
+    <string name="connect_btn_text">Connecter</string>
+    <string name="disconnect_btn_text">Déconnecter</string>
+    <string name="test_notif_btn_text">Test</string>
+    <string name="save_btn_text">Enregistrer</string>
+</resources>

@@ -20,11 +20,13 @@ class MainActivity : AppCompatActivity() {
     private lateinit var deviceName: EditText
     private lateinit var toogleNotifSound: SwitchCompat
 
-    private lateinit var modifyButton: Button    // Bouton "Modifier"
-    private lateinit var saveButton: Button      // Bouton "Enregistrer" (utilise l'ID saveButton3)
-    private lateinit var connectButton: Button
-    private lateinit var disconnectButton: Button
-    private lateinit var testNotifButton: Button
+    private lateinit var modifyButton: Button    // Bouton Modifier/Enregistrer
+    private lateinit var connectButton: Button   // Bouton Connecter/Déconnecter
+    private lateinit var testNotifButton: Button   // Bouton Test
+    private lateinit var closeButton: Button       // Bouton Fermer
+
+    // Flag pour savoir si on est en mode édition
+    private var isEditing = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -38,89 +40,62 @@ class MainActivity : AppCompatActivity() {
         toogleNotifSound = findViewById(R.id.toogleNotifSound)
 
         modifyButton = findViewById(R.id.modifyButton)
-        saveButton = findViewById(R.id.saveButton3) // On utilise le bouton saveButton3 pour enregistrer
         connectButton = findViewById(R.id.connectButton)
-        disconnectButton = findViewById(R.id.disconnectButton)
         testNotifButton = findViewById(R.id.testNotifButton)
+        closeButton = findViewById(R.id.closeButton)
 
-        // Par défaut, les champs sont en lecture seule et le bouton "Enregistrer" est masqué
+        // Par défaut, les champs sont en lecture seule
         setFieldsEnabled(false)
-        saveButton.visibility = View.GONE
-        modifyButton.visibility = View.VISIBLE
+        // On démarre avec le bouton Modifier et celui de connexion affiché en "Connecter"
+        modifyButton.text = getString(R.string.btn_modify)
+        connectButton.text = getString(R.string.btn_connect)
 
-        // Chargement des préférences depuis SharedPreferences
-        val sharedPref = getSharedPreferences("MQTTConfig", MODE_PRIVATE)
+        // Charger la configuration depuis SharedPreferences et le fichier externe
+        loadPreferences()
 
-        // Charger également depuis le fichier traps_config.txt (si présent)
-        val file = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "traps_config.txt"
-        )
-        if (file.exists()) {
-            val lines = file.readLines()
-            for (line in lines) {
-                val (key, value) = line.split("=")
-                when (key) {
-                    "serverHost" -> serverHost.setText(value)
-                    "serverPort" -> serverPort.setText(value)
-                    "deviceName" -> deviceName.setText(value)
-                    "toogleNotifSound" -> toogleNotifSound.isChecked = value.toBoolean()
-                }
-            }
-        }
-
-        // Charger également les préférences enregistrées
-        if (sharedPref.contains("serverHost")) {
-            serverHost.setText(sharedPref.getString("serverHost", "192.168.1.104"))
-        }
-        if (sharedPref.contains("serverPort")) {
-            serverPort.setText(sharedPref.getInt("serverPort", 1883).toString())
-        }
-        if (sharedPref.contains("deviceName")) {
-            deviceName.setText(sharedPref.getString("deviceName", Build.MODEL))
-        }
-        if (sharedPref.contains("toogleNotifSound")) {
-            toogleNotifSound.isChecked = sharedPref.getBoolean("toogleNotifSound", true)
-        }
-
-        // Instanciation initiale du MqttClientManager avec des valeurs vides (sera réinitialisé lors de la connexion)
+        // Instanciation initiale du client MQTT avec des valeurs vides (sera réinitialisé lors de la connexion)
         mqttClientManager = MqttClientManager(this, "", "")
 
-        // Bouton "Modifier": active l'édition et affiche le bouton "Enregistrer"
+        // Bouton Modifier/Enregistrer : bascule entre mode lecture seule et édition
         modifyButton.setOnClickListener {
-            setFieldsEnabled(true)
-            modifyButton.visibility = View.GONE
-            saveButton.visibility = View.VISIBLE
-        }
-
-        // Bouton "Enregistrer": sauvegarde les préférences et désactive l'édition
-        saveButton.setOnClickListener {
-            savePreferences()
-            Toast.makeText(this, "Préférences sauvegardées", Toast.LENGTH_SHORT).show()
-            setFieldsEnabled(false)
-            saveButton.visibility = View.GONE
-            modifyButton.visibility = View.VISIBLE
-        }
-
-        connectButton.setOnClickListener {
-            // Sauvegarde avant connexion pour s'assurer que la config est à jour
-            savePreferences()
-            if (!mqttClientManager.isConnected()) {
-                connectToServer()
+            if (!isEditing) {
+                // Passage en mode édition
+                setFieldsEnabled(true)
+                modifyButton.text = getString(R.string.btn_save)
+                isEditing = true
             } else {
-                Toast.makeText(this, "Déjà connecté", Toast.LENGTH_SHORT).show()
+                // Enregistrement des modifications et retour en mode lecture seule
+                savePreferences()
+                Toast.makeText(this, getString(R.string.preferences_saved), Toast.LENGTH_SHORT).show()
+                setFieldsEnabled(false)
+                modifyButton.text = getString(R.string.btn_modify)
+                isEditing = false
             }
         }
 
-        disconnectButton.setOnClickListener {
-            mqttClientManager.disconnect()
+        // Bouton Connecter/Déconnecter : bascule selon l'état de la connexion MQTT
+        connectButton.setOnClickListener {
+            if (!mqttClientManager.isConnected()) {
+                savePreferences() // S'assurer que la configuration est à jour
+                connectToServer()
+                connectButton.text = getString(R.string.btn_disconnect)
+            } else {
+                mqttClientManager.disconnect()
+                connectButton.text = getString(R.string.btn_connect)
+            }
         }
 
+        // Bouton Test : envoie un message de test via MQTT
         testNotifButton.setOnClickListener {
             mqttClientManager.publishMessage("notifs/${mqttClientManager.clientId}", "Test de notification")
         }
 
-        // Connexion automatique au démarrage (si les préférences sont valides)
+        // Bouton Fermer : ferme l'activité sans quitter l'application
+        closeButton.setOnClickListener {
+            finish()
+        }
+
+        // Tentative de connexion automatique au démarrage
         connectToServer()
     }
 
@@ -135,7 +110,47 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Récupère les valeurs enregistrées et tente la connexion au broker MQTT.
+     * Charge la configuration depuis SharedPreferences et, si présent, depuis le fichier traps_config.txt.
+     */
+    private fun loadPreferences() {
+        val sharedPref = getSharedPreferences("MQTTConfig", MODE_PRIVATE)
+
+        // Chargement depuis le fichier traps_config.txt dans le dossier Downloads (si disponible)
+        val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "traps_config.txt")
+        if (file.exists()) {
+            val lines = file.readLines()
+            for (line in lines) {
+                val parts = line.split("=")
+                if (parts.size >= 2) {
+                    val key = parts[0]
+                    val value = parts[1]
+                    when (key) {
+                        "serverHost" -> serverHost.setText(value)
+                        "serverPort" -> serverPort.setText(value)
+                        "deviceName" -> deviceName.setText(value)
+                        "toogleNotifSound" -> toogleNotifSound.isChecked = value.toBoolean()
+                    }
+                }
+            }
+        }
+
+        // Chargement depuis SharedPreferences
+        if (sharedPref.contains("serverHost")) {
+            serverHost.setText(sharedPref.getString("serverHost", "192.168.1.104"))
+        }
+        if (sharedPref.contains("serverPort")) {
+            serverPort.setText(sharedPref.getInt("serverPort", 1883).toString())
+        }
+        if (sharedPref.contains("deviceName")) {
+            deviceName.setText(sharedPref.getString("deviceName", Build.MODEL))
+        }
+        if (sharedPref.contains("toogleNotifSound")) {
+            toogleNotifSound.isChecked = sharedPref.getBoolean("toogleNotifSound", true)
+        }
+    }
+
+    /**
+     * Tente la connexion au serveur MQTT en utilisant la configuration sauvegardée.
      */
     private fun connectToServer() {
         val sharedPref = getSharedPreferences("MQTTConfig", MODE_PRIVATE)
@@ -150,7 +165,6 @@ class MainActivity : AppCompatActivity() {
 
         val brokerUrl = "tcp://$host:$port"
         mqttClientManager = MqttClientManager(this, brokerUrl, name ?: Build.MODEL)
-
         try {
             mqttClientManager.connect()
         } catch (e: Exception) {
@@ -160,7 +174,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Sauvegarde la configuration dans les SharedPreferences et dans le fichier traps_config.txt.
+     * Sauvegarde la configuration dans SharedPreferences et dans le fichier traps_config.txt.
      */
     private fun savePreferences() {
         val host = serverHost.text.toString()
@@ -177,10 +191,7 @@ class MainActivity : AppCompatActivity() {
             apply()
         }
 
-        val file = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "traps_config.txt"
-        )
+        val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "traps_config.txt")
         file.writeText("serverHost=$host\nserverPort=$port\ndeviceName=$name\ntoogleNotifSound=$notifSound\n")
     }
 

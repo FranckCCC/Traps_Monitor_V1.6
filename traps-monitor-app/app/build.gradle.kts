@@ -6,7 +6,7 @@ plugins {
 val versionMajor = 1
 val versionMinor = 6
 val versionPatch = 0
-val versionBuild = 32
+val versionBuild = 33
 
 val bundleId = "fr.kewan.trapsmonitor"
 
@@ -52,17 +52,20 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.activity)
-    implementation(libs.androidx.constraintlayout)
+    implementation("androidx.constraintlayout:constraintlayout:2.0.4")
+
     implementation(libs.androidx.legacysupport)
 
     implementation(libs.paho.mqtt)
     implementation(libs.paho.mqtt.service)
 
     implementation(libs.androidAppUpdateLibrary)
+
     implementation("com.android.support:multidex:1.0.3")
     implementation("com.google.android.material:material:1.4.0")
-    implementation("com.google.firebase:firebase-storage:19.2.0") // Rétrogradée
-
+    implementation("com.google.firebase:firebase-storage:19.2.0") {
+        exclude(group = "com.google.firebase", module = "firebase-storage-ktx")
+    }
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

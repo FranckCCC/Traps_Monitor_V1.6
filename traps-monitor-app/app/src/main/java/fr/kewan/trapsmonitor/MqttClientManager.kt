@@ -31,7 +31,7 @@ import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.json.JSONObject
 
 class MqttClientManager(private val context: Context, serverUri: String, val clientId: String) {
-
+    private var hasShownConnectedNotification = false
     var batteryLevelMonitor: BatteryLevelMonitor = BatteryLevelMonitor(this, context)
     private var mqttClient: MqttAndroidClient = MqttAndroidClient(context, serverUri, clientId)
 
@@ -147,17 +147,20 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
                     subscribeToTopic("toasts/#")
                     subscribeToTopic("cmd/#")
                     publishMessage("devices/$clientId", "Connected")
-                    Toast.makeText(context, "Connecté", Toast.LENGTH_SHORT).show()
+                    // Afficher le Toast "Connecté" une seule fois
+                    if (!hasShownConnectedNotification) {
+                        Toast.makeText(context, "Connecté", Toast.LENGTH_SHORT).show()
+                        hasShownConnectedNotification = true
+                    }
                     batteryLevelMonitor.startMonitoring()
                     wifiInfo()
                     wifiUpdateHandler.post(runnableCodeWifiUpdate)
                 }
 
                 override fun onFailure(asyncActionToken: IMqttToken?, exception: Throwable?) {
-                    //Toast.makeText(context, "", Toast.LENGTH_SHORT).show()
                     batteryLevelMonitor.stopMonitoring()
                     wifiUpdateHandler.removeCallbacks(runnableCodeWifiUpdate)
-                    Handler(Looper.getMainLooper()).postDelayed({ connect() }, 5000) // Tentative de reconnexion automatique
+                    Handler(Looper.getMainLooper()).postDelayed({ connect() }, 5000)
                 }
             })
         } catch (e: Exception) {

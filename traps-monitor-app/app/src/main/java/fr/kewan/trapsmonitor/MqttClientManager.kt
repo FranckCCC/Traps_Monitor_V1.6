@@ -31,9 +31,13 @@ import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.json.JSONObject
 
 class MqttClientManager(private val context: Context, serverUri: String, val clientId: String) {
-    private var hasShownConnectedNotification = false
+
     var batteryLevelMonitor: BatteryLevelMonitor = BatteryLevelMonitor(this, context)
     private var mqttClient: MqttAndroidClient = MqttAndroidClient(context, serverUri, clientId)
+
+    // Indicateurs pour éviter les notifications répétées
+    private var hasShownConnectedNotification = false
+    private var hasShownDisconnectedNotification = false
 
     private val wifiUpdateHandler = Handler(Looper.getMainLooper())
     private val runnableCodeWifiUpdate = object : Runnable {
@@ -54,8 +58,12 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
             override fun connectionLost(cause: Throwable?) {
                 batteryLevelMonitor.stopMonitoring()
                 wifiUpdateHandler.removeCallbacks(runnableCodeWifiUpdate)
-                Toast.makeText(context, "Connexion au serveur perdue", Toast.LENGTH_SHORT).show()
-                Handler(Looper.getMainLooper()).postDelayed({ connect() }, 5000) // Tentative de reconnexion automatique
+                if (!hasShownDisconnectedNotification) {
+                    Toast.makeText(context, "Connexion au serveur perdue", Toast.LENGTH_SHORT).show()
+                    hasShownDisconnectedNotification = true
+                }
+                // Tentative de reconnexion automatique après 5 secondes
+                Handler(Looper.getMainLooper()).postDelayed({ connect() }, 5000)
             }
 
             override fun messageArrived(topic: String?, message: MqttMessage?) {
@@ -147,11 +155,13 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
                     subscribeToTopic("toasts/#")
                     subscribeToTopic("cmd/#")
                     publishMessage("devices/$clientId", "Connected")
-                    // Afficher le Toast "Connecté" une seule fois
+                    // Afficher la notification "Connecté" une seule fois
                     if (!hasShownConnectedNotification) {
                         Toast.makeText(context, "Connecté", Toast.LENGTH_SHORT).show()
                         hasShownConnectedNotification = true
                     }
+                    // Réinitialiser le flag de déconnexion pour de futurs messages si la connexion est perdue à nouveau
+                    hasShownDisconnectedNotification = false
                     batteryLevelMonitor.startMonitoring()
                     wifiInfo()
                     wifiUpdateHandler.post(runnableCodeWifiUpdate)

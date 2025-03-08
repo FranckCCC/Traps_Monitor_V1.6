@@ -1,8 +1,9 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="#BEDFFF"
-    android:orientation="vertical"
+    android:orientation="horizontal"
     android:padding="20dp">
 
     <ScrollView
@@ -85,16 +86,28 @@
                 android:text="@string/toogle_notif_sound_text" />
 
             <!-- Bouton Enregistrer seul sur une ligne -->
+
+            <!-- LinearLayout pour les boutons Connecter, Déconnecter, et Test sur une même ligne -->
+
             <Button
-                android:id="@+id/saveButton"
+                android:id="@+id/modifyButton"
                 style="@style/Widget.App.Button"
-                android:layout_width="match_parent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:text="Modifier"
+                app:backgroundTint="#FF9800" />
+
+            <Button
+                android:id="@+id/saveButton3"
+                style="@style/Widget.App.Button"
+                android:layout_width="349dp"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
                 android:layout_marginBottom="10dp"
                 android:text="@string/save_btn_text" />
 
-            <!-- LinearLayout pour les boutons Connecter, Déconnecter, et Test sur une même ligne -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"

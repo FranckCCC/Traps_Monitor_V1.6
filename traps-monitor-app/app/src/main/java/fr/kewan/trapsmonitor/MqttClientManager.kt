@@ -263,7 +263,7 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
         val sharedPref = context.getSharedPreferences("MQTTConfig", AppCompatActivity.MODE_PRIVATE)
         val toggleNotifSound = sharedPref.getBoolean("toggleNotifSound", true)
 
-        // Créer un RemoteViews basé sur le layout personnalisé
+        // Créer un RemoteViews basé sur votre layout personnalisé
         val customView = RemoteViews(context.packageName, R.layout.notification_custom)
         customView.setTextViewText(R.id.notification_title, title)
         customView.setTextViewText(R.id.notification_text, content)
@@ -297,7 +297,7 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingClickIntent)
-            .setAutoCancel(true) // La notification se fermera uniquement lorsqu'elle est cliquée
+            .setOngoing(true) // La notification reste affichée tant qu'elle n'est pas cliquée
 
         if (toggleNotifSound) {
             builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))

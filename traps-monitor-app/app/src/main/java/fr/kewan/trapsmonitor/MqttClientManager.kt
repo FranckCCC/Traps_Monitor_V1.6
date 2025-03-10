@@ -297,6 +297,7 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setContentIntent(pendingClickIntent)
+            .setAutoCancel(true) // La notification se fermera uniquement lorsqu'elle est cliquée
 
         if (toggleNotifSound) {
             builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
@@ -309,4 +310,5 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
             notify(notificationId, builder.build())
         }
     }
+
 }

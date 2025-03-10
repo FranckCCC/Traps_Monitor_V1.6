@@ -61,10 +61,15 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
                 batteryLevelMonitor.stopMonitoring()
                 wifiUpdateHandler.removeCallbacks(runnableCodeWifiUpdate)
                 if (!hasShownDisconnectedNotification) {
-                    Toast.makeText(context, "Connexion au serveur perdue", Toast.LENGTH_SHORT).show()
+                    // Affiche un Toast pendant 5 secondes
+                    val toast = Toast.makeText(context, "Connexion au serveur perdue", Toast.LENGTH_LONG)
+                    toast.show()
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        toast.cancel()
+                    }, 5000)
+
                     hasShownDisconnectedNotification = true
                 }
-                // Tentative de reconnexion automatique après 5 secondes
                 Handler(Looper.getMainLooper()).postDelayed({ connect() }, 5000)
             }
 
@@ -157,9 +162,15 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
                     subscribeToTopic("toasts/#")
                     subscribeToTopic("cmd/#")
                     publishMessage("devices/$clientId", "Connected")
-                    // Afficher la notification "Connecté" une seule fois
+
                     if (!hasShownConnectedNotification) {
-                        Toast.makeText(context, "Connecté", Toast.LENGTH_SHORT).show()
+                        // Affiche un Toast pendant 1 secondes
+                        val toast = Toast.makeText(context, "Connecté", Toast.LENGTH_LONG)
+                        toast.show()
+                        Handler(Looper.getMainLooper()).postDelayed({
+                            toast.cancel()
+                        }, 1000)
+
                         hasShownConnectedNotification = true
                     }
                     // Réinitialiser le flag de déconnexion pour de futurs messages si la connexion est perdue à nouveau
@@ -233,11 +244,12 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
         val sharedPref = context.getSharedPreferences("MQTTConfig", AppCompatActivity.MODE_PRIVATE)
         val toggleNotifSound = sharedPref.getBoolean("toggleNotifSound", true)
 
-        // Crée un RemoteViews basé sur votre layout personnalisé
+        // Crée un RemoteViews basé sur le layout personnalisé
         val customView = RemoteViews(context.packageName, R.layout.notification_custom)
         customView.setTextViewText(R.id.notification_title, title)
         customView.setTextViewText(R.id.notification_text, content)
 
+        // Création du canal de notification pour Android O et plus
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Messages TRAPS"
             val descriptionText = "Notifications de messages TRAPS"

@@ -1,10 +1,14 @@
 package fr.kewan.trapsmonitor
 
 import android.Manifest
+import android.app.DownloadManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
-import android.app.DownloadManager
+import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.media.RingtoneManager
 import android.net.ConnectivityManager
@@ -15,6 +19,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.widget.RemoteViews
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -29,8 +34,6 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.json.JSONObject
-import android.widget.RemoteViews
-
 
 class MqttClientManager(private val context: Context, serverUri: String, val clientId: String) {
 
@@ -41,19 +44,36 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
     private var hasShownConnectedNotification = false
     private var hasShownDisconnectedNotification = false
 
-    private val wifiUpdateHandler = Handler(Looper.getMainLooper())
-    private val runnableCodeWifiUpdate = object : Runnable {
-        override fun run() {
-            wifiInfo()
-            wifiUpdateHandler.postDelayed(this, 60 * 1000 * 10) // 10 minutes en millisecondes
+    // Actions pour la notification
+    companion object {
+        const val ACTION_NOTIFICATION_OK = "fr.kewan.trapsmonitor.ACTION_NOTIFICATION_OK"
+        const val ACTION_NOTIFICATION_CLICK = "fr.kewan.trapsmonitor.ACTION_NOTIFICATION_CLICK"
+    }
+
+    // BroadcastReceiver pour gérer les actions de notification
+    private val notificationActionReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            when (intent?.action) {
+                ACTION_NOTIFICATION_OK, ACTION_NOTIFICATION_CLICK -> {
+                    publishMessage("notifs/$clientId", "message reçu")
+                    NotificationManagerCompat.from(context!!).cancel(1)
+                }
+            }
         }
     }
 
+    // Enregistrer le receiver pour les deux actions
     init {
+        val filter = IntentFilter().apply {
+            addAction(ACTION_NOTIFICATION_OK)
+            addAction(ACTION_NOTIFICATION_CLICK)
+        }
+        context.registerReceiver(notificationActionReceiver, filter)
+
         val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         val networkInfo: NetworkInfo? = connectivityManager.activeNetworkInfo
         if (networkInfo != null && networkInfo.isConnected) {
-            connect() // Connecter si le réseau est disponible au démarrage
+            connect() // Connexion au démarrage si le réseau est disponible
         }
 
         mqttClient.setCallback(object : MqttCallback {
@@ -61,21 +81,17 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
                 batteryLevelMonitor.stopMonitoring()
                 wifiUpdateHandler.removeCallbacks(runnableCodeWifiUpdate)
                 if (!hasShownDisconnectedNotification) {
-                    // Affiche un Toast pendant 5 secondes
                     val toast = Toast.makeText(context, "Connexion au serveur perdue", Toast.LENGTH_LONG)
                     toast.show()
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        toast.cancel()
-                    }, 5000)
-
+                    Handler(Looper.getMainLooper()).postDelayed({ toast.cancel() }, 3000)
                     hasShownDisconnectedNotification = true
                 }
+                // Tentative de reconnexion automatique après 5 secondes
                 Handler(Looper.getMainLooper()).postDelayed({ connect() }, 5000)
             }
 
             override fun messageArrived(topic: String?, message: MqttMessage?) {
                 if (topic == null) return
-
                 when {
                     topic.startsWith("notifs/") -> {
                         val deviceName = topic.substring(7)
@@ -142,12 +158,22 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
         })
     }
 
+    private val wifiUpdateHandler = Handler(Looper.getMainLooper())
+    private val runnableCodeWifiUpdate = object : Runnable {
+        override fun run() {
+            wifiInfo()
+            wifiUpdateHandler.postDelayed(this, 60 * 1000 * 10) // 10 minutes
+        }
+    }
+
     fun isConnected(): Boolean = mqttClient.isConnected
 
     fun disconnect() {
         try {
             publishMessage("devices/$clientId", "Disconnected")
             mqttClient.disconnect()
+            // Désenregistrer le receiver si besoin
+            context.unregisterReceiver(notificationActionReceiver)
         } catch (e: MqttException) {
             e.printStackTrace()
         }
@@ -162,18 +188,12 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
                     subscribeToTopic("toasts/#")
                     subscribeToTopic("cmd/#")
                     publishMessage("devices/$clientId", "Connected")
-
                     if (!hasShownConnectedNotification) {
-                        // Affiche un Toast pendant 1 secondes
                         val toast = Toast.makeText(context, "Connecté", Toast.LENGTH_LONG)
                         toast.show()
-                        Handler(Looper.getMainLooper()).postDelayed({
-                            toast.cancel()
-                        }, 1000)
-
+                        Handler(Looper.getMainLooper()).postDelayed({ toast.cancel() }, 3000)
                         hasShownConnectedNotification = true
                     }
-                    // Réinitialiser le flag de déconnexion pour de futurs messages si la connexion est perdue à nouveau
                     hasShownDisconnectedNotification = false
                     batteryLevelMonitor.startMonitoring()
                     wifiInfo()
@@ -233,7 +253,6 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
         request.setDescription("Downloading update...")
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
         request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "update.apk")
-
         val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         downloadManager.enqueue(request)
     }
@@ -244,12 +263,23 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
         val sharedPref = context.getSharedPreferences("MQTTConfig", AppCompatActivity.MODE_PRIVATE)
         val toggleNotifSound = sharedPref.getBoolean("toggleNotifSound", true)
 
-        // Crée un RemoteViews basé sur le layout personnalisé
+        // Créer un RemoteViews basé sur le layout personnalisé
         val customView = RemoteViews(context.packageName, R.layout.notification_custom)
         customView.setTextViewText(R.id.notification_title, title)
         customView.setTextViewText(R.id.notification_text, content)
 
-        // Création du canal de notification pour Android O et plus
+        // Créer un PendingIntent pour le bouton OK
+        val okIntent = Intent(ACTION_NOTIFICATION_OK)
+        val pendingFlags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M)
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        else PendingIntent.FLAG_UPDATE_CURRENT
+        val pendingOkIntent = PendingIntent.getBroadcast(context, 0, okIntent, pendingFlags)
+        customView.setOnClickPendingIntent(R.id.notification_ok_button, pendingOkIntent)
+
+        // Créer un PendingIntent pour le clic sur la notification entière
+        val clickIntent = Intent(ACTION_NOTIFICATION_CLICK)
+        val pendingClickIntent = PendingIntent.getBroadcast(context, 1, clickIntent, pendingFlags)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Messages TRAPS"
             val descriptionText = "Notifications de messages TRAPS"
@@ -266,6 +296,7 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
             .setCustomContentView(customView)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setContentIntent(pendingClickIntent)
 
         if (toggleNotifSound) {
             builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))

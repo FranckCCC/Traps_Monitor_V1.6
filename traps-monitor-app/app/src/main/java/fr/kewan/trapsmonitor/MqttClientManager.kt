@@ -29,6 +29,8 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions
 import org.eclipse.paho.client.mqttv3.MqttException
 import org.eclipse.paho.client.mqttv3.MqttMessage
 import org.json.JSONObject
+import android.widget.RemoteViews
+
 
 class MqttClientManager(private val context: Context, serverUri: String, val clientId: String) {
 
@@ -231,6 +233,11 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
         val sharedPref = context.getSharedPreferences("MQTTConfig", AppCompatActivity.MODE_PRIVATE)
         val toggleNotifSound = sharedPref.getBoolean("toggleNotifSound", true)
 
+        // Crée un RemoteViews basé sur votre layout personnalisé
+        val customView = RemoteViews(context.packageName, R.layout.notification_custom)
+        customView.setTextViewText(R.id.notification_title, title)
+        customView.setTextViewText(R.id.notification_text, content)
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val name = "Messages TRAPS"
             val descriptionText = "Notifications de messages TRAPS"
@@ -238,25 +245,22 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
             val channel = NotificationChannel(channelId, name, importance).apply {
                 description = descriptionText
             }
-            val notificationManager: NotificationManager =
-                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
+
         val builder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle(title)
-            .setContentText(content)
+            .setCustomContentView(customView)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(content))
 
-        if (toggleNotifSound) builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+        if (toggleNotifSound) {
+            builder.setSound(RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION))
+        }
 
         with(NotificationManagerCompat.from(context)) {
-            if (ActivityCompat.checkSelfPermission(
-                    context,
-                    Manifest.permission.POST_NOTIFICATIONS
-                ) != PackageManager.PERMISSION_GRANTED
-            ) {
+            if (ActivityCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
                 return
             }
             notify(notificationId, builder.build())

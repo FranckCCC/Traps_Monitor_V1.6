@@ -1,6 +1,6 @@
 <resources>
     <string name="app_name">Traps Monitor</string>
-    <string name="first_page_title">Configuration TRAPS Moniteur V1.6.2.4</string>
+    <string name="first_page_title">Configuration TRAPS Moniteur V1.6.2.5</string>
     <string name="server_host_label">Adresse du broker MQTT</string>
     <string name="server_host_hint">ex: tcp://mqtt.example.com</string>
     <string name="server_port_label">Port</string>

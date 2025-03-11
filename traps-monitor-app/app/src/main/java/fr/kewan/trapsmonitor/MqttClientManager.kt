@@ -19,6 +19,7 @@ import android.os.Build
 import android.os.Environment
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import android.widget.RemoteViews
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
@@ -55,7 +56,7 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 ACTION_NOTIFICATION_OK, ACTION_NOTIFICATION_CLICK -> {
-                    // Envoyer le message sur un topic auquel le device n'est pas abonné, par exemple "ack/$clientId"
+                    Log.d("MQTT", "Action notification reçue : ${intent.action}")
                     publishMessage("ack/$clientId", "message reçu")
                     NotificationManagerCompat.from(context!!).cancel(1)
                 }
@@ -238,10 +239,15 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
 
     fun publishMessage(topic: String, message: String, qos: Int = 1) {
         try {
+            if (!mqttClient.isConnected) {
+                Log.d("MQTT", "Client non connecté, message non envoyé : $message")
+                return
+            }
             mqttClient.publish(topic, MqttMessage().apply {
                 payload = message.toByteArray()
                 this.qos = qos
             })
+            Log.d("MQTT", "Message publié sur le topic $topic : $message")
         } catch (e: MqttException) {
             e.printStackTrace()
         }

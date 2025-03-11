@@ -55,13 +55,13 @@ class MqttClientManager(private val context: Context, serverUri: String, val cli
         override fun onReceive(context: Context?, intent: Intent?) {
             when (intent?.action) {
                 ACTION_NOTIFICATION_OK, ACTION_NOTIFICATION_CLICK -> {
-                    publishMessage("notifs/$clientId", "message reçu")
+                    // Envoyer le message sur un topic auquel le device n'est pas abonné, par exemple "ack/$clientId"
+                    publishMessage("ack/$clientId", "message reçu")
                     NotificationManagerCompat.from(context!!).cancel(1)
                 }
             }
         }
     }
-
     // Enregistrer le receiver pour les deux actions
     init {
         val filter = IntentFilter().apply {
